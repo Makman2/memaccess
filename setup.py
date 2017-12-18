@@ -8,7 +8,7 @@ def read_file(filename):
 
 setup(
     name='memaccess',
-    version='0.1',
+    version='0.1.1',
     packages=find_packages(),
     author='Mischa Krüger (Makman2)',
     author_email='makmanx64@gmail.com',
