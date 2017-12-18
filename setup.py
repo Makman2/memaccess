@@ -9,4 +9,5 @@ setup(
     author_email='makmanx64@gmail.com',
     description="Python library for Windows giving live access to a program's memory",
     license='MIT',
+    url='https://github.com/Makman2/memaccess',
 )
