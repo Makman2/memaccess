@@ -24,6 +24,27 @@ _PROCESS_VM_READ = 0x0010
 
 class MemoryView:
     def __init__(self, pid):
+        """
+        Initializes a new `MemoryView`.
+
+        A `MemoryView` exposes functions that allow to read memory of other
+        running processes. It takes care of requesting necessary data from
+        Windows to be able to read process memory.
+
+        >>> from memaccess import MemoryView
+        >>> view = MemoryView(5555)
+        >>> # Read memory...
+        >>> view.close()
+
+        It's safer to use the context-manager variant of `MemoryView`, so you
+        don't forget to close the object manually with `close`:
+
+        >>> with MemoryView(5555) as view:
+        >>>     pass  # Read memory...
+
+        :param pid:
+            The process-id of the process to observe.
+        """
         self._process_handle = _OpenProcess(_PROCESS_VM_READ, False, pid)
 
         if self._process_handle is None:
@@ -33,6 +54,12 @@ class MemoryView:
                 "error code {}".format(pid, error_code))
 
     def close(self):
+        """
+        Closes the memory view.
+
+        Calling this function on an already closed `MemoryView` raises an
+        exception.
+        """
         if not _CloseHandle(self._process_handle):
             error_code = _GetLastError()
             raise RuntimeError(
@@ -40,6 +67,16 @@ class MemoryView:
                 "error code {}".format(error_code))
 
     def read(self, size, address):
+        """
+        Reads a piece of process memory.
+
+        :param size:
+            Number of bytes to read from the process.
+        :param address:
+            Memory address where to start reading from.
+        :return:
+            A `bytes` object containing the data read.
+        """
         buffer = create_string_buffer(size)
         read_size = c_ulong()
 
@@ -60,18 +97,58 @@ class MemoryView:
         return struct.unpack(fmt, self.read(struct.calcsize(fmt), address))
 
     def read_int(self, address):
+        """
+        Reads an integer (4 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Integer value at given address.
+        """
         return self._read_and_convert('<i', address)[0]
 
     def read_unsigned_int(self, address):
+        """
+        Reads an unsigned integer (4 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Unsigned integer value at given address.
+        """
         return self._read_and_convert('<I', address)[0]
 
     def read_char(self, address):
+        """
+        Reads a char (1 byte) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Char value at given address as a `bytes` object.
+        """
         return self._read_and_convert('c', address)[0]
 
     def read_float(self, address):
+        """
+        Reads a float (4 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Float value at given address.
+        """
         return self._read_and_convert('<f', address)[0]
 
     def read_double(self, address):
+        """
+        Reads a double (8 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Double value at given address.
+        """
         return self._read_and_convert('<d', address)[0]
 
     def __enter__(self):
