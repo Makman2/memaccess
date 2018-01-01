@@ -13,7 +13,7 @@ setup(
     author='Mischa Krüger (Makman2)',
     author_email='makmanx64@gmail.com',
     description="Python library for Windows giving live access to a program's memory",
-    long_description=read_file('README.md'),
+    long_description=read_file('README.rst'),
     license='MIT',
     url='https://github.com/Makman2/memaccess',
 )
