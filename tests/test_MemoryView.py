@@ -22,7 +22,7 @@ def compile_testapp():
     check_call(('cmake', test_app_path), cwd=build_directory)
     check_call(('cmake', '--build', build_directory), cwd=build_directory)
 
-    return os.path.join(build_directory, 'Debug', 'test-exe')
+    return os.path.join(build_directory, 'test-exe')
 
 
 @pytest.fixture(scope='module')
