@@ -129,6 +129,28 @@ class MemoryView:
         """
         return self._read_and_convert('c', address)[0]
 
+    def read_short(self, address):
+        """
+        Reads a short (2 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Short value at given address.
+        """
+        return self._read_and_convert('<h', address)[0]
+
+    def read_unsigned_short(self, address):
+        """
+        Reads an unsigned short (2 bytes) from memory.
+
+        :param address:
+            Memory address where to read from.
+        :return:
+            Unsigned short value at given address.
+        """
+        return self._read_and_convert('<H', address)[0]
+
     def read_float(self, address):
         """
         Reads a float (4 bytes) from memory.

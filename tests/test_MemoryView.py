@@ -117,6 +117,28 @@ def test_read_char(testprocess):
         assert view.read_char(address) == value
 
 
+def test_read_short(testprocess):
+    rgx = r'short: (-?\d+) at ((?:0x)?[0-9A-Fa-f]+)'
+    match = match_list(rgx, testprocess.lines)
+
+    value = int(match.group(1))
+    address = int(match.group(2), 16)
+
+    with MemoryView(testprocess.pid) as view:
+        assert view.read_short(address) == value
+
+
+def test_read_unsigned_short(testprocess):
+    rgx = r'unsigned short: (\d+) at ((?:0x)?[0-9A-Fa-f]+)'
+    match = match_list(rgx, testprocess.lines)
+
+    value = int(match.group(1))
+    address = int(match.group(2), 16)
+
+    with MemoryView(testprocess.pid) as view:
+        assert view.read_unsigned_short(address) == value
+
+
 def test_read_float(testprocess):
     rgx = r'float: (-?\d+(?:\.\d+)?) at ((?:0x)?[0-9A-Fa-f]+)'
     match = match_list(rgx, testprocess.lines)

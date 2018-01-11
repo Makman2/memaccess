@@ -3,6 +3,7 @@
 void main() {
     char char_value = 55;
     short short_value = 12041;
+    unsigned ushort_value = 54310;
     int int_value = -988324;
     unsigned int uint_value = 2134;
 
@@ -13,6 +14,7 @@ void main() {
 
     printf("char: %i at %p\n", char_value, &char_value);
     printf("short: %i at %p\n", short_value, &short_value);
+    printf("unsigned short: %i at %p\n", ushort_value, &ushort_value);
     printf("int: %i at %p\n", int_value, &int_value);
     printf("unsigned int: %i at %p\n", uint_value, &uint_value);
 
