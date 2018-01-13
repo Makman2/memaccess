@@ -1,9 +1,9 @@
 from collections import namedtuple
-import os
 import re
-from subprocess import check_call, PIPE, Popen
+from subprocess import PIPE, Popen
 
 import pytest
+from tests.native import build_native_testapp
 
 from memaccess import MemoryView
 
@@ -11,23 +11,9 @@ from memaccess import MemoryView
 TestProcessInfo = namedtuple('TestProcess', ('pid', 'lines'))
 
 
-def compile_testapp():
-    test_app_path = os.path.join(os.getcwd(), 'tests', 'native')
-    build_directory = os.path.join(os.getcwd(), 'tests', 'native', 'build')
-
-    # Create necessary build directories.
-    os.makedirs(build_directory, exist_ok=True)
-
-    # Compile.
-    check_call(('cmake', test_app_path), cwd=build_directory)
-    check_call(('cmake', '--build', build_directory), cwd=build_directory)
-
-    return os.path.join(build_directory, 'test-exe')
-
-
 @pytest.fixture(scope='module')
 def testprocess():
-    test_app_path = compile_testapp()
+    test_app_path = build_native_testapp('read-test-app')
 
     test_process = Popen(test_app_path,
                          universal_newlines=True, stdin=PIPE, stdout=PIPE)
