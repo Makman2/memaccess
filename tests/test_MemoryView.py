@@ -8,7 +8,18 @@ from tests.native import build_native_testapp
 from memaccess import MemoryView
 
 
-TestProcessInfo = namedtuple('TestProcess', ('pid', 'lines'))
+TestProcessValue = namedtuple('TestProcessValue', ('type', 'value', 'address'))
+TestProcessInfo = namedtuple('TestProcessInfo', ('pid', 'values'))
+
+
+def match_testprocess_values(lines):
+    rgx = r'(.+?): (.+) at ((?:0x)?[0-9A-Fa-f]+)'
+
+    for line in lines:
+        match = re.match(rgx, line)
+        yield TestProcessValue(type=match.group(1),
+                               value=match.group(2),
+                               address=int(match.group(3), 16))
 
 
 @pytest.fixture(scope='module')
@@ -21,19 +32,13 @@ def read_test_process():
     lines = iter(test_process.stdout.readline,
                  'Press ENTER to quit...\n')
 
-    yield TestProcessInfo(pid=test_process.pid, lines=tuple(lines))
+    yield TestProcessInfo(pid=test_process.pid,
+                          values=tuple(match_testprocess_values(lines)))
 
     test_process.stdin.write('\n')
     test_process.stdin.flush()
 
     test_process.wait()
-
-
-def match_list(rgx, lst):
-    for line in lst:
-        match = re.match(rgx, line)
-        if match is not None:
-            return match
 
 
 def test_invalid_process():
@@ -65,88 +70,72 @@ def test_double_close(read_test_process):
 
 
 def test_read_int(read_test_process):
-    rgx = r'int: (-?\d+) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = int(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'int')
+    value = int(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_int(address) == value
+        assert view.read_int(field.address) == value
 
 
 def test_read_unsigned_int(read_test_process):
-    rgx = r'unsigned int: (\d+) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = int(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'unsigned int')
+    value = int(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_unsigned_int(address) == value
+        assert view.read_unsigned_int(field.address) == value
 
 
 def test_read_char(read_test_process):
-    rgx = r'char: (\d+) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = bytes([int(match.group(1))])
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'char')
+    value = bytes([int(field.value)])
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_char(address) == value
+        assert view.read_char(field.address) == value
 
 
 def test_read_short(read_test_process):
-    rgx = r'short: (-?\d+) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = int(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'short')
+    value = int(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_short(address) == value
+        assert view.read_short(field.address) == value
 
 
 def test_read_unsigned_short(read_test_process):
-    rgx = r'unsigned short: (\d+) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = int(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'unsigned short')
+    value = int(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_unsigned_short(address) == value
+        assert view.read_unsigned_short(field.address) == value
 
 
 def test_read_float(read_test_process):
-    rgx = r'float: (-?\d+(?:\.\d+)?) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = float(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'float')
+    value = float(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_float(address) == value
+        assert view.read_float(field.address) == value
 
 
 def test_read_double(read_test_process):
-    rgx = r'double: (-?\d+(?:\.\d+)?) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    value = float(match.group(1))
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'double')
+    value = float(field.value)
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read_double(address) == value
+        assert view.read_double(field.address) == value
 
 
 def test_read(read_test_process):
-    rgx = r'bytes: (\d+(?: \d+)*) at ((?:0x)?[0-9A-Fa-f]+)'
-    match = match_list(rgx, read_test_process.lines)
-
-    values = bytes([int(num) for num in match.group(1).split()])
-    address = int(match.group(2), 16)
+    field = next(v for v in read_test_process.values
+                 if v.type == 'bytes')
+    values = bytes([int(num) for num in field.value.split()])
 
     with MemoryView(read_test_process.pid) as view:
-        assert view.read(len(values), address) == values
+        assert view.read(len(values), field.address) == values
