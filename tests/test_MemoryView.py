@@ -41,6 +41,43 @@ def read_test_process():
     test_process.wait()
 
 
+@pytest.fixture
+def write_test_process():
+    it = _write_test_process_iterator()
+    yield it
+
+    # Complete the iterator and let the process iterator do cleanups.
+    for _ in it:
+        pass
+
+
+def _write_test_process_iterator():
+    test_app_path = build_native_testapp('write-test-app')
+
+    test_process = Popen(test_app_path,
+                         universal_newlines=True, stdin=PIPE, stdout=PIPE)
+
+    lines = iter(test_process.stdout.readline,
+                 'Press ENTER to continue...\n')
+
+    yield TestProcessInfo(pid=test_process.pid,
+                          values=tuple(match_testprocess_values(lines)))
+
+    test_process.stdin.write('\n')
+    test_process.stdin.flush()
+
+    lines = iter(test_process.stdout.readline,
+                 'Press ENTER to quit...\n')
+
+    yield TestProcessInfo(pid=test_process.pid,
+                          values=tuple(match_testprocess_values(lines)))
+
+    test_process.stdin.write('\n')
+    test_process.stdin.flush()
+
+    test_process.wait()
+
+
 def test_invalid_process():
     # Trying to use process 0 raises an error according to API specs.
     with pytest.raises(RuntimeError) as ex:
@@ -139,3 +176,163 @@ def test_read(read_test_process):
 
     with MemoryView(read_test_process.pid) as view:
         assert view.read(len(values), field.address) == values
+
+
+def test_write_int(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'int')
+    value1 = int(field1.value)
+
+    new_value = 211022
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_int(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'int')
+    value2 = int(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_unsigned_int(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'unsigned int')
+    value1 = int(field1.value)
+
+    new_value = 12000993
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_unsigned_int(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'unsigned int')
+    value2 = int(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_char(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'char')
+    value1 = int(field1.value)
+
+    new_value = 3
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_char(bytes([new_value]), field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'char')
+    value2 = int(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_short(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'short')
+    value1 = int(field1.value)
+
+    new_value = -31000
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_short(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'short')
+    value2 = int(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_unsigned_short(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'unsigned short')
+    value1 = int(field1.value)
+
+    new_value = 36789;
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_unsigned_short(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'unsigned short')
+    value2 = int(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_float(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'float')
+    value1 = float(field1.value)
+
+    new_value = -555.0
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_float(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'float')
+    value2 = float(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write_double(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'double')
+    value1 = float(field1.value)
+
+    new_value = -555.0
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write_double(new_value, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'double')
+    value2 = float(field2.value)
+
+    assert field1.address == field2.address
+    assert value2 != value1
+    assert value2 == new_value
+
+
+def test_write(write_test_process):
+    process_info = next(write_test_process)
+
+    field1 = next(v for v in process_info.values
+                  if v.type == 'bytes')
+    values1 = bytes([int(num) for num in field1.value.split()])
+
+    new_values = bytes(range(len(values1)))
+    with MemoryView(process_info.pid, 'w') as view:
+        view.write(new_values, field1.address)
+
+    field2 = next(v for v in next(write_test_process).values
+                  if v.type == 'bytes')
+    values2 = bytes([int(num) for num in field2.value.split()])
+
+    assert field1.address == field2.address
+    assert values2 != values1
+    assert values2 == new_values

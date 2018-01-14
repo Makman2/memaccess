@@ -11,6 +11,11 @@ _ReadProcessMemory.argtypes = (wintypes.HANDLE, wintypes.LPCVOID,
                                wintypes.LPVOID, c_ulong, POINTER(c_ulong))
 _ReadProcessMemory.restype = wintypes.BOOL
 
+_WriteProcessMemory = windll.kernel32.WriteProcessMemory
+_WriteProcessMemory.argtypes = (wintypes.HANDLE, wintypes.LPVOID,
+                                wintypes.LPCVOID, c_ulong, POINTER(c_ulong))
+_WriteProcessMemory.restype = wintypes.BOOL
+
 _CloseHandle = windll.kernel32.CloseHandle
 _CloseHandle.argtypes = (wintypes.HANDLE,)
 _CloseHandle.restype = wintypes.BOOL
@@ -19,17 +24,19 @@ _GetLastError = windll.kernel32.GetLastError
 _GetLastError.argtypes = tuple()
 _GetLastError.restype = wintypes.DWORD
 
+_PROCESS_VM_OPERATION = 0x0008
 _PROCESS_VM_READ = 0x0010
+_PROCESS_VM_WRITE = 0x0020
 
 
 class MemoryView:
-    def __init__(self, pid):
+    def __init__(self, pid, mode='r'):
         """
         Initializes a new `MemoryView`.
 
-        A `MemoryView` exposes functions that allow to read memory of other
-        running processes. It takes care of requesting necessary data from
-        Windows to be able to read process memory.
+        A `MemoryView` exposes functions that allow to read or write memory of
+        other running processes. It takes care of requesting necessary data
+        from Windows to be able to access process memory.
 
         >>> from memaccess import MemoryView
         >>> view = MemoryView(5555)
@@ -42,10 +49,30 @@ class MemoryView:
         >>> with MemoryView(5555) as view:
         >>>     pass  # Read memory...
 
+        By default `MemoryView` only allows to read process memory, and calls
+        to write-functions will fail. To also allow writes, you can supply
+        opening-mode-specifiers (similar to the Python built-in function
+        `open`):
+
+        >>> with MemoryView(5555, 'rw') as view:
+        >>>     pass  # Read and write memory...
+
         :param pid:
             The process-id of the process to observe.
+        :param mode:
+            The process opening mode. Supported values are `r`, `w` or a
+            combination of both (`rw`).
         """
-        self._process_handle = _OpenProcess(_PROCESS_VM_READ, False, pid)
+        access_level = 0x0000
+        for letter in set(mode):
+            if letter == 'r':
+                access_level += _PROCESS_VM_READ
+            elif letter == 'w':
+                access_level += _PROCESS_VM_OPERATION + _PROCESS_VM_WRITE
+            else:
+                raise ValueError('Invalid access mode: {}'.format(mode))
+
+        self._process_handle = _OpenProcess(access_level, False, pid)
 
         if self._process_handle is None:
             error_code = _GetLastError()
@@ -172,6 +199,107 @@ class MemoryView:
             Double value at given address.
         """
         return self._read_and_convert('<d', address)[0]
+
+    def write(self, values, address):
+        """
+        Writes bytes to given memory location.
+
+        :param value:
+            ``bytes`` to write.
+        :param address:
+            Memory address where to start writing.
+        """
+        buffer = create_string_buffer(len(values))
+        buffer.raw = values
+        written_size = c_ulong()
+
+        if not _WriteProcessMemory(self._process_handle, address, buffer,
+                                   len(buffer), written_size):
+            error_code = _GetLastError()
+            raise RuntimeError(
+                "Can't write {} bytes to address 0x{:x} of process memory, "
+                "error code {}".format(len(values), address, error_code))
+
+        # Check if written size and desired size fit together.
+        if written_size.value != len(values):
+            raise RuntimeError('Memory write incomplete')
+
+    def write_int(self, value, address):
+        """
+        Writes an integer (4 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<i', value), address)
+
+    def write_unsigned_int(self, value, address):
+        """
+        Writes an unsigned integer (4 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<I', value), address)
+
+    def write_char(self, value, address):
+        """
+        Writes a char (1 byte) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('c', value), address)
+
+    def write_short(self, value, address):
+        """
+        Writes a short (2 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<h', value), address)
+
+    def write_unsigned_short(self, value, address):
+        """
+        Writes an unsigned short (2 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<H', value), address)
+
+    def write_float(self, value, address):
+        """
+        Writes a float (4 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<f', value), address)
+
+    def write_double(self, value, address):
+        """
+        Writes a double (8 bytes) to memory.
+
+        :param value:
+            The value to write.
+        :param address:
+            Memory address where to write to.
+        """
+        self.write(struct.pack('<d', value), address)
 
     def __enter__(self):
         return self
