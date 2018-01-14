@@ -29,6 +29,28 @@ _PROCESS_VM_READ = 0x0010
 _PROCESS_VM_WRITE = 0x0020
 
 
+class MemoryReadIncompleteError(RuntimeError):
+    def __init__(self, data=None):
+        """
+        :param data:
+            Data read until fail occurred.
+        """
+        super().__init__('Memory read incomplete')
+
+        self.data = data
+
+
+class MemoryWriteIncompleteError(RuntimeError):
+    def __init__(self, bytes_written=None):
+        """
+        :param bytes_written:
+            Number of bytes written until fail occurred.
+        """
+        super().__init__('Memory write incomplete')
+
+        self.bytes_written = bytes_written
+
+
 class MemoryView:
     def __init__(self, pid, mode='r'):
         """
@@ -116,7 +138,7 @@ class MemoryView:
 
         # Check if read size and desired size fit together.
         if read_size.value != size:
-            raise RuntimeError('Memory read incomplete')
+            raise MemoryReadIncompleteError(buffer[:read_size.value])
 
         return buffer.raw
 
@@ -222,7 +244,7 @@ class MemoryView:
 
         # Check if written size and desired size fit together.
         if written_size.value != len(values):
-            raise RuntimeError('Memory write incomplete')
+            raise MemoryWriteIncompleteError(written_size.value)
 
     def write_int(self, value, address):
         """
