@@ -106,6 +106,13 @@ def test_double_close(read_test_process):
     assert str(ex.value) == expected_message
 
 
+def test_invalid_mode(read_test_process):
+    with pytest.raises(ValueError) as ex:
+        MemoryView(read_test_process.pid, 'rwx')
+
+    assert str(ex.value) == 'Invalid access mode: rwx'
+
+
 def test_read_int(read_test_process):
     field = next(v for v in read_test_process.values
                  if v.type == 'int')
