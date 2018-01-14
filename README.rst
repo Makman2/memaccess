@@ -8,7 +8,7 @@ Usage
 
 ``memaccess`` exposes one main class to use for memory inspection:
 ``MemoryView``. It will request all necessary data from Windows to be
-able to read memory of another application. Just pass to the class the
+able to access memory of another application. Just pass to the class the
 process-id of the application you want to observe:
 
 .. code:: python
@@ -51,6 +51,15 @@ in memory to respective C/C++ types.
     view.read_int(0x01234560)
     view.read_float(0x01234564)
     # ... and many others.
+
+You can also write to memory. Note that you have to open the ``MemoryView``
+in write-mode:
+
+.. code:: python
+
+    with MemoryView(5555, 'rw') as view:
+        view.write_int(33, 0x01234560)
+        view.read_int(0x01234564)
 
 Please inspect the ``MemoryView`` class for details on all of those
 functions.
