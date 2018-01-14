@@ -18,14 +18,8 @@ def testprocess():
     test_process = Popen(test_app_path,
                          universal_newlines=True, stdin=PIPE, stdout=PIPE)
 
-    lines = []
-    while True:
-        line = test_process.stdout.readline()
-
-        if line == 'Press ENTER to quit...\n':
-            break
-
-        lines.append(line)
+    lines = iter(test_process.stdout.readline,
+                 'Press ENTER to quit...\n')
 
     yield TestProcessInfo(pid=test_process.pid, lines=tuple(lines))
 
